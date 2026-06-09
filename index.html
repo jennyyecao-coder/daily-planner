@@ -646,7 +646,39 @@
     .time-label { width: 60px; font-size: .65rem; }
 
     .day-cell { min-height: 44px; }
-    .modal { max-width: calc(100vw - 24px); max-height: 90vh; overflow-y: auto; }
+
+    /* ── Bottom-sheet modal ── */
+    .modal-backdrop {
+      align-items: flex-end; justify-content: center;
+      padding: 0;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: 100%; max-width: 100%; border-radius: 20px 20px 0 0;
+      padding: 16px 18px 28px; max-height: 88vh; overflow-y: auto;
+      box-shadow: 0 -8px 32px rgba(44,62,80,.22);
+    }
+    .modal::before {
+      content: ''; display: block; width: 40px; height: 4px;
+      background: var(--border); border-radius: 2px;
+      margin: 0 auto 14px; flex-shrink: 0;
+    }
+    .modal.narrow, .modal.wide { width: 100%; }
+    .modal h2 { font-size: .92rem; margin-bottom: 12px; }
+    .modal label { margin-top: 10px; font-size: .72rem; }
+    .modal input[type="text"],
+    .modal input[type="date"],
+    .modal input[type="number"],
+    .modal select,
+    .modal textarea { font-size: .92rem; padding: 9px 11px; }
+    .modal-actions {
+      flex-direction: row; gap: 10px; margin-top: 16px;
+    }
+    .modal-actions .btn-cancel,
+    .modal-actions .btn-save,
+    .modal-actions .btn-danger { flex: 1; padding: 11px 8px; font-size: .92rem; }
+    .allday-label { font-size: .82rem; }
+
     .week-picker-popup { width: 92vw; left: 0; transform: none; }
   }
   @media (min-width: 769px) {
