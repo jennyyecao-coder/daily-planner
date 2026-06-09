@@ -648,36 +648,39 @@
     .day-cell { min-height: 44px; }
 
     /* ── Bottom-sheet modal ── */
-    .modal-backdrop {
-      align-items: flex-end; justify-content: center;
-      padding: 0;
-    }
+    .modal-backdrop { align-items: flex-end; justify-content: center; padding: 0; }
     .modal-backdrop.open { display: flex; }
     .modal {
-      width: 100%; max-width: 100%; border-radius: 20px 20px 0 0;
-      padding: 16px 18px 28px; max-height: 88vh; overflow-y: auto;
-      box-shadow: 0 -8px 32px rgba(44,62,80,.22);
+      width: 100%; max-width: 100%; border-radius: 18px 18px 0 0;
+      padding: 10px 16px 24px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 -6px 28px rgba(44,62,80,.22);
     }
     .modal::before {
-      content: ''; display: block; width: 40px; height: 4px;
-      background: var(--border); border-radius: 2px;
-      margin: 0 auto 14px; flex-shrink: 0;
+      content: ''; display: block; width: 36px; height: 4px;
+      background: var(--border); border-radius: 2px; margin: 0 auto 10px;
     }
     .modal.narrow, .modal.wide { width: 100%; }
-    .modal h2 { font-size: .92rem; margin-bottom: 12px; }
-    .modal label { margin-top: 10px; font-size: .72rem; }
+    .modal h2 { font-size: .85rem; margin-bottom: 8px; }
+    .modal label { margin-top: 8px; margin-bottom: 2px; font-size: .68rem; }
     .modal input[type="text"],
     .modal input[type="date"],
     .modal input[type="number"],
-    .modal select,
-    .modal textarea { font-size: .92rem; padding: 9px 11px; }
-    .modal-actions {
-      flex-direction: row; gap: 10px; margin-top: 16px;
+    .modal select { font-size: .88rem; padding: 7px 9px; }
+    .modal textarea { font-size: .88rem; padding: 7px 9px; min-height: 40px; }
+    .modal .hint { font-size: .68rem; }
+    .modal-2col {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end;
     }
+    .modal-2col label { margin-top: 8px; }
+    .allday-row--col { display: flex; align-items: flex-end; padding-bottom: 7px; }
+    .allday-label { font-size: .82rem; }
+    .ev-dur-label, .ev-dur-row { display: none; }
+    .modal-actions { gap: 8px; margin-top: 12px; }
     .modal-actions .btn-cancel,
     .modal-actions .btn-save,
-    .modal-actions .btn-danger { flex: 1; padding: 11px 8px; font-size: .92rem; }
-    .allday-label { font-size: .82rem; }
+    .modal-actions .btn-danger { flex: 1; padding: 10px 8px; font-size: .9rem; }
+    .color-row { gap: 6px; }
+    .color-swatch { width: 22px; height: 22px; }
 
     .week-picker-popup { width: 92vw; left: 0; transform: none; }
   }
@@ -775,23 +778,33 @@
     <h2 id="modalTitle">Add Event</h2>
     <label>Event Title</label>
     <input type="text" id="evTitle" placeholder="e.g. Team standup" />
-    <label>Date</label>
-    <input type="date" id="evDate" />
+    <div class="modal-2col">
+      <div>
+        <label>Date</label>
+        <input type="date" id="evDate" />
+      </div>
+      <div class="allday-row allday-row--col">
+        <label class="allday-label"><input type="checkbox" id="evAllDay"> All day</label>
+      </div>
+    </div>
     <label>Location</label>
     <div class="loc-input-wrap">
       <svg width="12" height="15" viewBox="0 0 12 15" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M6 0C3.243 0 1 2.243 1 5c0 4.2 5 10 5 10s5-5.8 5-10c0-2.757-2.243-5-5-5zm0 7.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
       <input type="text" id="evLocation" placeholder="Address or place name (optional)" />
     </div>
-    <div class="allday-row">
-      <label class="allday-label"><input type="checkbox" id="evAllDay"> All day</label>
-    </div>
     <div id="evTimeRows">
-    <label>Start Time</label>
-    <select id="evStart"></select>
-    <label>End Time</label>
-    <select id="evEnd"></select>
-    <label>Duration</label>
-    <div class="dur-row">
+    <div class="modal-2col">
+      <div>
+        <label>Start</label>
+        <select id="evStart"></select>
+      </div>
+      <div>
+        <label>End</label>
+        <select id="evEnd"></select>
+      </div>
+    </div>
+    <label class="ev-dur-label">Duration</label>
+    <div class="dur-row ev-dur-row">
       <input type="number" id="evDurH" min="0" max="47" placeholder="0" />
       <span class="dur-lbl">h</span>
       <select id="evDurM">
