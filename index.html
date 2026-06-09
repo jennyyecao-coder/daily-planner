@@ -1829,6 +1829,10 @@ function renderEvent(ev, ds, col, totalCols) {
   });
   el.addEventListener('dragstart', e => { if (resizeState) { e.preventDefault(); return; } onDragStart(e); });
   el.addEventListener('dragend',   onDragEnd);
+  // Forward drag events through to the parent cell so drops work on occupied slots
+  el.addEventListener('dragover',  e => { if (!dragData || dragData.eventId === ev.id) return; e.preventDefault(); e.dataTransfer.dropEffect='move'; cell.classList.add('drag-over'); });
+  el.addEventListener('dragleave', e => { if (!cell.contains(e.relatedTarget)) cell.classList.remove('drag-over'); });
+  el.addEventListener('drop',      e => { if (!dragData || dragData.eventId === ev.id) return; e.preventDefault(); e.stopPropagation(); onDrop.call(cell, e); });
   cell.appendChild(el);
 }
 
