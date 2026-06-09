@@ -603,6 +603,48 @@
     width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
     border: 2px solid rgba(0,0,0,.15);
   }
+
+  /* ══════════ MOBILE ══════════ */
+  @media (max-width: 768px) {
+    body { overflow: auto; height: auto; min-height: 100vh; }
+
+    header {
+      flex-wrap: wrap; padding: 8px 12px; gap: 6px;
+    }
+    header h1 { order: -1; flex-basis: 100%; font-size: .85rem; }
+    .week-picker-wrap { order: 1; flex: 1; }
+    .week-label-btn { min-width: unset; font-size: .82rem; padding: 6px 10px; width: 100%; }
+    #prevBtn, #nextBtn { padding: 6px 10px; font-size: .88rem; }
+    .today-btn { padding: 6px 10px; font-size: .82rem; }
+    #notifyBtn, #folderBtn, .theme-picker-wrap { display: none; }
+    #sidebarToggleBtn {
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: 1px solid rgba(255,255,255,.3); border-radius: 6px;
+      padding: 6px 10px; cursor: pointer; font-size: 1rem; color: #fff;
+    }
+
+    #main-content { flex-direction: column; overflow: visible; }
+
+    #sidebar {
+      display: none; width: 100%; max-width: 100%; min-width: unset;
+      box-shadow: 0 4px 12px rgba(44,62,80,.15); border-bottom: 1px solid var(--border);
+      padding: 14px 14px 10px;
+    }
+    #sidebar.mobile-open { display: flex; }
+    #sidebarResizeHandle { display: none; }
+    #sbVResizeHandle { display: none; }
+    #prioPanel { height: auto; max-height: 260px; }
+
+    #calendar-wrapper { padding: 8px; overflow: visible; }
+    #calendar { border-radius: 8px; }
+
+    .day-cell { min-height: 44px; }
+    .modal { max-width: calc(100vw - 24px); max-height: 90vh; overflow-y: auto; }
+    .week-picker-popup { width: 92vw; left: 0; transform: none; }
+  }
+  @media (min-width: 769px) {
+    #sidebarToggleBtn { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -627,6 +669,7 @@
 
   <button class="nav-btn" id="nextBtn">Next &#8250;</button>
   <button class="today-btn" id="todayBtn">Today</button>
+  <button id="sidebarToggleBtn" title="Toggle priorities">☰</button>
   <button class="icon-btn" id="notifyBtn" title="Click to enable event reminders">🔔 Alerts</button>
   <button class="icon-btn" id="folderBtn" title="Select folder to save data across browsers">📁 Select Folder</button>
   <div class="theme-picker-wrap" id="themePickerWrap">
@@ -843,6 +886,7 @@ let COLORS = COLORS_DEFAULT.map(c => ({...c}));
 
 // ══ State ════════════════════════════════════════════════
 let currentWeekStart;
+let currentMobileDay;
 let events       = {};  // { "date|hour": [{id,title,date,start,end,colorIdx,notes,recurringId}] }
 let priorities   = {};  // { "weekKey": [{id,text,done,target,progress}] }
 let colorLabels  = COLORS.map(() => ''); // user-defined labels per color index
@@ -869,10 +913,16 @@ function dateStrFromDate(dt) {
 function getWeekStart(dt) {
   const d = new Date(dt); d.setHours(0,0,0,0); d.setDate(d.getDate() - d.getDay()); return d;
 }
+function isMobile() { return window.innerWidth <= 768; }
 function getWeekDays() {
+  if (isMobile()) return [new Date(currentMobileDay)];
   return Array.from({length:7}, (_, i) => { const d = new Date(currentWeekStart); d.setDate(d.getDate()+i); return d; });
 }
 function weekRangeLabel() {
+  if (isMobile()) {
+    const d = currentMobileDay;
+    return `${DAYS_SHORT[d.getDay()]}, ${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  }
   const end = new Date(currentWeekStart); end.setDate(end.getDate()+6);
   const s = currentWeekStart, e = end;
   if (s.getMonth() === e.getMonth())
@@ -1243,6 +1293,7 @@ function loadStorage() {
 // ══ Init ═════════════════════════════════════════════════
 async function init() {
   currentWeekStart = getWeekStart(new Date());
+  currentMobileDay = new Date(); currentMobileDay.setHours(0,0,0,0);
   const fileLoaded = await initFileStorage();
   if (!fileLoaded) loadStorage();
   scheduleNotifications();
@@ -1254,6 +1305,10 @@ async function init() {
   renderPriorities();
   renderColorLegendBar();
   setupEventModalListeners();
+  document.getElementById('sidebarToggleBtn').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('mobile-open');
+  });
+  window.addEventListener('resize', () => { renderCalendar(); renderPriorities(); });
   setupPickerListeners();
   setupPriorityListeners();
   setupColorLegendListeners();
@@ -2250,7 +2305,7 @@ function renderPicker() {
     const cell=document.createElement('div');
     cell.className='wp-day'+(ds===todayStr?' wp-today':'')+(wsStr===selWeekStr?' wp-in-selected-week':'');
     cell.textContent=d; cell.dataset.wsStr=wsStr;
-    cell.addEventListener('click',()=>{ currentWeekStart=ws; renderCalendar(); renderPriorities(); closePicker(); });
+    cell.addEventListener('click',()=>{ currentWeekStart=ws; if(isMobile()){currentMobileDay=new Date(date);currentMobileDay.setHours(0,0,0,0);} renderCalendar(); renderPriorities(); closePicker(); });
     cell.addEventListener('mouseenter',()=>document.querySelectorAll(`.wp-day[data-ws-str="${wsStr}"]`).forEach(el=>el.classList.add('wp-week-hover')));
     cell.addEventListener('mouseleave',()=>document.querySelectorAll('.wp-day.wp-week-hover').forEach(el=>el.classList.remove('wp-week-hover')));
     grid.appendChild(cell);
@@ -2275,14 +2330,25 @@ function scrollToCurrentHour() {
   if (cell) cell.scrollIntoView({behavior:'smooth',block:'center'});
 }
 document.getElementById('prevBtn').addEventListener('click', () => {
-  currentWeekStart=new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()-7);
+  if (isMobile()) {
+    currentMobileDay=new Date(currentMobileDay); currentMobileDay.setDate(currentMobileDay.getDate()-1);
+    currentWeekStart=getWeekStart(currentMobileDay);
+  } else {
+    currentWeekStart=new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()-7);
+  }
   renderCalendar(); renderPriorities();
 });
 document.getElementById('nextBtn').addEventListener('click', () => {
-  currentWeekStart=new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()+7);
+  if (isMobile()) {
+    currentMobileDay=new Date(currentMobileDay); currentMobileDay.setDate(currentMobileDay.getDate()+1);
+    currentWeekStart=getWeekStart(currentMobileDay);
+  } else {
+    currentWeekStart=new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()+7);
+  }
   renderCalendar(); renderPriorities();
 });
 document.getElementById('todayBtn').addEventListener('click', () => {
+  currentMobileDay=new Date(); currentMobileDay.setHours(0,0,0,0);
   currentWeekStart=getWeekStart(new Date()); renderCalendar(); renderPriorities(); setTimeout(scrollToCurrentHour,80);
 });
 
