@@ -473,10 +473,21 @@
   .modal.narrow { width: 320px; }
   .modal.wide   { width: 480px; }
 
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
   .modal h2 {
-    font-size: 1rem; margin-bottom: 16px; color: var(--ui-text);
+    font-size: 1rem; margin-bottom: 0; color: var(--ui-text);
     font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   }
+  .modal-close-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1rem; color: var(--muted); line-height: 1;
+    padding: 4px 6px; border-radius: 6px; transition: background .12s, color .12s;
+    flex-shrink: 0;
+  }
+  .modal-close-btn:hover { background: #fee2e2; color: #e05252; }
   .modal label {
     font-size: .78rem; font-weight: 700; color: var(--ui-text);
     display: block; margin-bottom: 4px; margin-top: 12px;
@@ -661,7 +672,8 @@
       background: var(--border); border-radius: 2px; margin: 0 auto 10px;
     }
     .modal.narrow, .modal.wide { width: 100%; }
-    .modal h2 { font-size: .85rem; margin-bottom: 8px; }
+    .modal h2 { font-size: .85rem; }
+    .modal-header { margin-bottom: 8px; }
     .modal label { margin-top: 8px; margin-bottom: 2px; font-size: .68rem; }
     .modal input[type="text"],
     .modal input[type="date"],
@@ -776,7 +788,10 @@
 <!-- ══ Event Modal ══ -->
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal">
-    <h2 id="modalTitle">Add Event</h2>
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Event</h2>
+      <button class="modal-close-btn" id="modalCloseBtn" title="Cancel &amp; close">✕</button>
+    </div>
     <label>Event Title</label>
     <input type="text" id="evTitle" placeholder="e.g. Team standup" />
     <div class="modal-2col">
@@ -2081,6 +2096,7 @@ function setupEventModalListeners() {
   document.getElementById('evDurH').addEventListener('input',   syncEndFromDur);
   document.getElementById('evDurM').addEventListener('change',  syncEndFromDur);
   document.getElementById('modalCancel').addEventListener('click', closeModal);
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
   document.getElementById('modalSave').addEventListener('click', saveModal);
   document.getElementById('modalBackdrop').addEventListener('click', e => {
     if (e.target===document.getElementById('modalBackdrop')) closeModal();
