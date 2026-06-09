@@ -455,6 +455,7 @@
   }
   .event:hover .ev-resize { opacity: 1; }
   .event.is-resizing { opacity: .85; }
+  body.ev-dragging .event { pointer-events: none; }
 
   /* ══════════ MODALS ══════════ */
   .modal-backdrop {
@@ -2100,11 +2101,16 @@ function onCellClick(e) {
 }
 function onDragStart(e) {
   const el=e.currentTarget;
-  dragData = { eventId:el.dataset.eventId, origDate:el.dataset.date, origHour:parseFloat(el.dataset.hour) };
+  const rect=el.getBoundingClientRect();
+  const offsetRows=Math.round((e.clientY-rect.top)/44)*0.5; // cursor offset in hours from event top
+  dragData = { eventId:el.dataset.eventId, origDate:el.dataset.date, origHour:parseFloat(el.dataset.hour), offsetHours:offsetRows };
   el.style.opacity='0.5'; e.dataTransfer.effectAllowed='move';
+  // Let cells receive dragover/drop even when events overlap them
+  requestAnimationFrame(()=>document.body.classList.add('ev-dragging'));
 }
 function onDragEnd(e) {
   e.currentTarget.style.opacity='';
+  document.body.classList.remove('ev-dragging');
   dragData=null;
   document.querySelectorAll('.day-cell.drag-over').forEach(c=>c.classList.remove('drag-over'));
 }
@@ -2113,11 +2119,16 @@ function onDragLeave()  { this.classList.remove('drag-over'); }
 function onDrop(e) {
   e.preventDefault(); this.classList.remove('drag-over');
   if (!dragData) return;
-  const newDate = this.dataset.date, newHour = parseFloat(this.dataset.hour);
-  if (newDate===dragData.origDate && newHour===dragData.origHour) return;
+  const cellHour = parseFloat(this.dataset.hour);
+  const newDate  = this.dataset.date;
+  // Snap the event start to the cell, adjusted for where user grabbed it
+  const rawStart = cellHour - (dragData.offsetHours || 0);
+  const newHour  = Math.round(rawStart * 2) / 2; // snap to nearest 0.5
+  const clampedStart = Math.max(0, Math.min(23.5, newHour));
+  if (newDate===dragData.origDate && clampedStart===dragData.origHour) return;
   const ev = findEvent(dragData.eventId); if (!ev) return;
   const dur = ev.end - ev.start;
-  updateEvent(dragData.eventId, { date:newDate, start:newHour, end:Math.min(newHour+dur,24) });
+  updateEvent(dragData.eventId, { date:newDate, start:clampedStart, end:Math.min(clampedStart+dur,48) });
   saveAll(); renderCalendar();
 }
 
