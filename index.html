@@ -663,37 +663,35 @@
     .modal-backdrop { align-items: flex-end; justify-content: center; padding: 0; }
     .modal-backdrop.open { display: flex; }
     .modal {
-      width: 100%; max-width: 100%; border-radius: 18px 18px 0 0;
-      padding: 10px 16px 24px; max-height: 80vh; overflow-y: auto;
+      width: 100%; max-width: 100%; border-radius: 16px 16px 0 0;
+      padding: 10px 14px 14px; max-height: 92vh; overflow-y: auto;
       box-shadow: 0 -6px 28px rgba(44,62,80,.22);
     }
-    .modal::before {
-      content: ''; display: block; width: 36px; height: 4px;
-      background: var(--border); border-radius: 2px; margin: 0 auto 10px;
-    }
+    .modal::before { display: none; }
     .modal.narrow, .modal.wide { width: 100%; }
-    .modal h2 { font-size: .85rem; }
-    .modal-header { margin-bottom: 8px; }
-    .modal label { margin-top: 8px; margin-bottom: 2px; font-size: .68rem; }
+    .modal h2 { font-size: .82rem; }
+    .modal-header { margin-bottom: 6px; }
+    .modal label { margin-top: 5px; margin-bottom: 1px; font-size: .66rem; }
     .modal input[type="text"],
     .modal input[type="date"],
     .modal input[type="number"],
-    .modal select { font-size: .88rem; padding: 7px 9px; }
-    .modal textarea { font-size: .88rem; padding: 7px 9px; min-height: 40px; }
-    .modal .hint { font-size: .68rem; }
+    .modal select { font-size: .86rem; padding: 5px 8px; }
+    .modal textarea { font-size: .86rem; padding: 5px 8px; min-height: 30px; }
+    .modal .hint { font-size: .65rem; margin-top: 1px; }
     .modal-2col {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end;
     }
-    .modal-2col label { margin-top: 8px; }
-    .allday-row--col { display: flex; align-items: flex-end; padding-bottom: 7px; }
-    .allday-label { font-size: .82rem; }
+    .modal-2col label { margin-top: 5px; }
+    .allday-row--col { display: flex; align-items: flex-end; padding-bottom: 5px; }
+    .allday-label { font-size: .8rem; }
     .ev-dur-label, .ev-dur-row { display: none; }
-    .modal-actions { gap: 8px; margin-top: 12px; }
+    #colorLegendHint { display: none; }
+    .modal-actions { gap: 8px; margin-top: 8px; }
     .modal-actions .btn-cancel,
     .modal-actions .btn-save,
-    .modal-actions .btn-danger { flex: 1; padding: 10px 8px; font-size: .9rem; }
-    .color-row { gap: 6px; }
-    .color-swatch { width: 22px; height: 22px; }
+    .modal-actions .btn-danger { flex: 1; padding: 9px 8px; font-size: .88rem; }
+    .color-row { gap: 5px; margin-top: 4px; }
+    .color-swatch { width: 20px; height: 20px; }
 
     .week-picker-popup { width: 92vw; left: 0; transform: none; }
   }
@@ -829,23 +827,26 @@
       </select>
     </div>
     </div><!-- #evTimeRows -->
-    <label>Repeat</label>
-    <select id="evRecurrence">
-      <option value="none">Does not repeat</option>
-      <option value="daily">Daily</option>
-      <option value="weekly">Weekly (same day)</option>
-      <option value="weekdays">Every weekday (Mon–Fri)</option>
-      <option value="weekends">Weekends (Sat–Sun)</option>
-    </select>
+    <div class="modal-2col">
+      <div>
+        <label>Repeat</label>
+        <select id="evRecurrence">
+          <option value="none">Does not repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly (same day)</option>
+          <option value="weekdays">Every weekday (Mon–Fri)</option>
+          <option value="weekends">Weekends (Sat–Sun)</option>
+        </select>
+      </div>
+      <div>
+        <label>Reminder (min)</label>
+        <input type="number" id="evReminderMin" min="0" max="1440" value="15" />
+      </div>
+    </div>
     <div id="evRecurEndRow">
       <label>Ends on</label>
       <input type="date" id="evRecurEnd" />
       <p class="hint">Leave blank to repeat for 6 months.</p>
-    </div>
-    <label>Reminder</label>
-    <div class="dur-row">
-      <input type="number" id="evReminderMin" min="0" max="1440" value="15" />
-      <span class="dur-lbl">min before &nbsp;<span style="opacity:.6">(0 = off)</span></span>
     </div>
     <label>Notes</label>
     <textarea id="evNotes" placeholder="Optional notes…"></textarea>
