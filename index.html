@@ -2431,11 +2431,22 @@ function updateTimeNowLine() {
   const isCurrentWeek = getWeekDays().some(d => dateStrFromDate(d) === todayStr);
   if (!isCurrentWeek) return;
 
-  const topPx = 80 + (now.getHours() + now.getMinutes() / 60) * 88;
+  // Measure actual cell position so the line is pixel-accurate regardless of header height
+  const h = now.getHours(), m = now.getMinutes();
+  const slotHour = m >= 30 ? h + 0.5 : h;
+  const cell = document.querySelector(`.day-cell[data-date="${todayStr}"][data-hour="${slotHour}"]`);
+  if (!cell) return;
+
+  const cal = document.getElementById('calendar');
+  const calTop  = cal.getBoundingClientRect().top;
+  const cellTop = cell.getBoundingClientRect().top;
+  const fracInSlot = (m % 30) / 30;
+  const topPx = (cellTop - calTop) + fracInSlot * cell.offsetHeight + cal.scrollTop;
+
   const line = document.createElement('div');
   line.className = 'time-now-line';
   line.style.top = `${topPx}px`;
-  document.getElementById('calendar').appendChild(line);
+  cal.appendChild(line);
 }
 
 // ══ Export / Import ══════════════════════════════════════
