@@ -1935,6 +1935,23 @@ function removeAllByRecurId(rid) {
     if (!events[key].length) delete events[key];
   }
 }
+function updateAllByRecurId(rid, sourceId, changes) {
+  for (const arr of Object.values(events)) {
+    for (const ev of arr) {
+      if (ev.recurringId !== rid) continue;
+      ev.title      = changes.title;
+      ev.start      = changes.start;
+      ev.end        = changes.end;
+      ev.allDay     = changes.allDay;
+      ev.location   = changes.location;
+      ev.notes      = changes.notes;
+      ev.reminderMin = changes.reminderMin;
+      ev.colorIdx   = changes.colorIdx;
+      // keep each occurrence's own date; only update the edited one's date
+      if (ev.id === sourceId) ev.date = changes.date;
+    }
+  }
+}
 
 // ── Recurring: generate dates ────────────────────────────
 // Parse YYYY-MM-DD as a LOCAL date (avoids UTC midnight timezone shift)
@@ -1989,15 +2006,17 @@ function setupRecurModalListeners() {
   document.getElementById('recurThisBtn').addEventListener('click', () => {
     document.getElementById('recurModalBackdrop').classList.remove('open');
     if (!pendingRecurAction) return;
-    const { type, id } = pendingRecurAction;
+    const { type, id, changes } = pendingRecurAction;
     if (type === 'delete') { removeEvent(id); saveAll(); renderCalendar(); }
+    if (type === 'edit') { updateEvent(id, changes); saveAll(); closeModal(); renderCalendar(); }
     pendingRecurAction = null;
   });
   document.getElementById('recurAllBtn').addEventListener('click', () => {
     document.getElementById('recurModalBackdrop').classList.remove('open');
     if (!pendingRecurAction) return;
-    const { type, recurringId } = pendingRecurAction;
+    const { type, id, recurringId, changes } = pendingRecurAction;
     if (type === 'delete') { removeAllByRecurId(recurringId); saveAll(); renderCalendar(); }
+    if (type === 'edit') { updateAllByRecurId(recurringId, id, changes); saveAll(); closeModal(); renderCalendar(); }
     pendingRecurAction = null;
   });
 }
@@ -2084,9 +2103,19 @@ function saveModal() {
       const recurringId = genId();
       const dates = generateRecurDates(date, recurrence, recurEnd);
       dates.forEach(d => addEventObj({ id:genId(), title, date:d, start, end, allDay, location, notes, reminderMin, colorIdx:selectedColorIdx, recurringId }));
-    } else {
-      updateEvent(editingEventId, { title, date, start, end, allDay, location, notes, reminderMin, colorIdx: selectedColorIdx });
+      saveAll(); closeModal(); renderCalendar(); return;
     }
+    const changes = { title, date, start, end, allDay, location, notes, reminderMin, colorIdx: selectedColorIdx };
+    const ev = findEvent(editingEventId);
+    if (ev && ev.recurringId) {
+      pendingRecurAction = { type: 'edit', id: editingEventId, recurringId: ev.recurringId, changes };
+      document.getElementById('recurModalTitle').textContent = 'Edit Recurring Event';
+      document.getElementById('recurModalMsg').textContent   = `"${ev.title}" is a recurring event. Edit just this occurrence or all?`;
+      document.getElementById('recurAllBtn').textContent     = 'Edit all';
+      document.getElementById('recurModalBackdrop').classList.add('open');
+      return;
+    }
+    updateEvent(editingEventId, changes);
     saveAll(); closeModal(); renderCalendar(); return;
   }
 
