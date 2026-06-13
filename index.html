@@ -2831,15 +2831,31 @@ fbAuth.onAuthStateChanged(async user => {
   }
 });
 
-// Handle redirect result on page load
-fbAuth.getRedirectResult().catch(console.error);
+// Handle redirect result on page load (in case popup was blocked and we fell back to redirect)
+fbAuth.getRedirectResult().then(result => {
+  if (result && result.user) console.log('Signed in via redirect:', result.user.email);
+}).catch(e => {
+  if (e.code && e.code !== 'auth/no-auth-event') {
+    console.error('Redirect sign-in error:', e.code, e.message);
+    alert('Sign-in failed: ' + e.message);
+  }
+});
 
-document.getElementById('syncBtn').addEventListener('click', () => {
+document.getElementById('syncBtn').addEventListener('click', async () => {
   if (fbUser) {
     fbAuth.signOut();
   } else {
     const provider = new firebase.auth.GoogleAuthProvider();
-    fbAuth.signInWithRedirect(provider);
+    try {
+      await fbAuth.signInWithPopup(provider);
+    } catch(e) {
+      console.error('Popup sign-in error:', e.code, e.message);
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
+        fbAuth.signInWithRedirect(provider);
+      } else {
+        alert('Sign-in failed: ' + e.message);
+      }
+    }
   }
 });
 </script>
