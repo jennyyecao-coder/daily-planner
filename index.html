@@ -2628,12 +2628,16 @@ function computeSyncDiff(localData, cloudData) {
   const lPrs = flattenPriorities(localData.priorities), cPrs = flattenPriorities(cloudData.priorities);
 
   const evLocalOnly = [], evCloudOnly = [], evConflicts = [], evSame = new Map();
+  let _logged = 0;
   for (const id of new Set([...lEvs.keys(), ...cEvs.keys()])) {
     const l = lEvs.get(id), c = cEvs.get(id);
     if      (!c)           evLocalOnly.push(l);
     else if (!l)           evCloudOnly.push(c);
     else if (jsonEq(l, c)) evSame.set(id, l);
-    else                   evConflicts.push({ id, local: l, cloud: c });
+    else {
+      if (_logged++ < 3) console.log('[SyncDiff] conflict example — local:', JSON.stringify(normalizeItem(l)), 'cloud:', JSON.stringify(normalizeItem(c)));
+      evConflicts.push({ id, local: l, cloud: c });
+    }
   }
 
   const prLocalOnly = [], prCloudOnly = [], prConflicts = [], prSame = new Map();
