@@ -659,16 +659,16 @@
 
     .day-cell { min-height: 44px; }
 
-    /* ── Bottom-sheet modal ── */
-    .modal-backdrop { align-items: flex-end; justify-content: center; padding: 0 10px; }
+    /* ── Centered floating modal ── */
+    .modal-backdrop { align-items: center; justify-content: center; padding: 16px; }
     .modal-backdrop.open { display: flex; }
     .modal {
-      width: 100%; max-width: 480px; border-radius: 16px 16px 0 0;
-      padding: 10px 14px 18px; max-height: 88vh; overflow-y: auto;
-      box-shadow: 0 -6px 28px rgba(44,62,80,.28);
+      width: 100%; max-width: 400px; border-radius: 16px;
+      padding: 14px 16px 18px; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(44,62,80,.35);
     }
     .modal::before { display: none; }
-    .modal.narrow, .modal.wide { width: 100%; max-width: 480px; }
+    .modal.narrow, .modal.wide { width: 100%; max-width: 400px; }
     .modal h2 { font-size: .82rem; }
     .modal-header { margin-bottom: 6px; }
     .modal label { display: block; margin-top: 6px; margin-bottom: 2px; font-size: .67rem; }
