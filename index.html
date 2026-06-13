@@ -2621,7 +2621,11 @@ function normalizeItem(obj) {
   }
   return out;
 }
-function jsonEq(a, b) { return JSON.stringify(normalizeItem(a)) === JSON.stringify(normalizeItem(b)); }
+function stableStr(obj) {
+  const n = normalizeItem(obj);
+  return JSON.stringify(n, Object.keys(n).sort());
+}
+function jsonEq(a, b) { return stableStr(a) === stableStr(b); }
 
 function computeSyncDiff(localData, cloudData) {
   const lEvs = flattenEvents(localData.events),   cEvs = flattenEvents(cloudData.events);
