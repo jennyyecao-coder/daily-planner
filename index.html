@@ -2536,6 +2536,14 @@ setInterval(updateTimeNowLine, 60000);
 </div>
 
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC7k3Q0-FSHQ15S7KTI3QSM9xptVujMrl0",
+  authDomain: "daily-planner-eaeed.firebaseapp.com",
+  projectId: "daily-planner-eaeed",
+  storageBucket: "daily-planner-eaeed.firebasestorage.app",
+  messagingSenderId: "689699634937",
+  appId: "1:689699634937:web:cc96aa1079c8b20f596c28"
+};
 firebase.initializeApp(firebaseConfig);
 const fbAuth = firebase.auth();
 const fbDb   = firebase.firestore();
