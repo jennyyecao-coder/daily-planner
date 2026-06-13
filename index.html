@@ -704,6 +704,10 @@
     #sidebarToggleBtn { display: none; }
   }
 </style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -730,6 +734,7 @@
   <button id="sidebarToggleBtn" title="Toggle priorities">☰</button>
   <button class="icon-btn" id="notifyBtn" title="Click to enable event reminders">🔔 Alerts</button>
   <button class="icon-btn" id="folderBtn" title="Select folder to save data across browsers">📁 Select Folder</button>
+  <button class="icon-btn" id="syncBtn" title="Sign in to sync across devices">☁️ Sign In</button>
   <div class="theme-picker-wrap" id="themePickerWrap">
     <button class="icon-btn" id="themeBtn">🎨 Theme</button>
     <div class="theme-dropdown" id="themeDropdown">
@@ -2513,6 +2518,94 @@ document.getElementById('folderBtn').addEventListener('click', async () => {
 init();
 window.addEventListener('load', () => setTimeout(scrollToCurrentHour, 80));
 setInterval(updateTimeNowLine, 60000);
+</script>
+
+<!-- ══ Firebase sync ══════════════════════════════════════ -->
+<script>
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "daily-planner-eaeed.firebaseapp.com",
+  projectId: "daily-planner-eaeed",
+  storageBucket: "daily-planner-eaeed.firebasestorage.app",
+  messagingSenderId: "689699634937",
+  appId: "1:689699634937:web:cc96aa1079c8b20f596c28"
+};
+firebase.initializeApp(firebaseConfig);
+const fbAuth = firebase.auth();
+const fbDb   = firebase.firestore();
+let fbUser = null;
+let fbUnsub = null; // onSnapshot unsubscriber
+
+function fbDocRef() {
+  return fbDb.collection('users').doc(fbUser.uid).collection('planner').doc('data');
+}
+
+// Push local data to Firestore
+function fbSave() {
+  if (!fbUser) return;
+  fbDocRef().set({ events, priorities, colorLabels, colorBases }).catch(console.error);
+}
+
+// Load Firestore data into app and re-render
+function fbApply(data) {
+  if (!data) return;
+  if (data.events)      events      = data.events;
+  if (data.priorities)  priorities  = data.priorities;
+  if (data.colorLabels) colorLabels = data.colorLabels;
+  if (data.colorBases)  { colorBases = data.colorBases; rebuildColors(); }
+  renderCalendar();
+  renderPriorities();
+  renderColorLegendBar();
+  scheduleNotifications();
+}
+
+// Subscribe to real-time updates from Firestore
+function fbSubscribe() {
+  if (fbUnsub) fbUnsub();
+  fbUnsub = fbDocRef().onSnapshot(snap => {
+    if (snap.exists) fbApply(snap.data());
+  }, console.error);
+}
+
+// Patch saveAll to also write to Firebase
+const _origSaveAll = saveAll;
+saveAll = function() {
+  _origSaveAll();
+  fbSave();
+};
+
+// Auth state
+fbAuth.onAuthStateChanged(user => {
+  fbUser = user;
+  const btn = document.getElementById('syncBtn');
+  if (user) {
+    btn.textContent = `☁️ ${user.displayName?.split(' ')[0] || 'Synced'}`;
+    btn.title = `Signed in as ${user.email} — click to sign out`;
+    // Pull from Firestore first, then subscribe
+    fbDocRef().get().then(snap => {
+      if (snap.exists) {
+        fbApply(snap.data());
+      } else {
+        // First sign-in: push local data up
+        fbSave();
+      }
+      fbSubscribe();
+    }).catch(console.error);
+  } else {
+    btn.textContent = '☁️ Sign In';
+    btn.title = 'Sign in to sync across devices';
+    if (fbUnsub) { fbUnsub(); fbUnsub = null; }
+  }
+});
+
+document.getElementById('syncBtn').addEventListener('click', () => {
+  if (fbUser) {
+    fbAuth.signOut();
+  } else {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    fbAuth.signInWithPopup(provider).catch(console.error);
+  }
+});
 </script>
 </body>
 </html>
