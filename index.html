@@ -2524,18 +2524,31 @@ setInterval(updateTimeNowLine, 60000);
 <!-- Firebase credentials live in firebase-config.js (gitignored). -->
 <!-- Copy firebase-config.example.js → firebase-config.js and fill in your values. -->
 <script src="firebase-config.js"></script>
+
+<!-- Sync review modal -->
+<div id="syncModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg,#1e1e2e);border:1px solid var(--border,#444);border-radius:12px;max-width:500px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4);color:var(--text,#cdd6f4)">
+    <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border,#444);font-weight:700;font-size:1rem">☁️ Sync Review</div>
+    <div id="syncModalBody" style="overflow-y:auto;padding:1rem 1.2rem;flex:1;display:flex;flex-direction:column;gap:.8rem;font-size:.88rem"></div>
+    <div style="padding:.8rem 1.2rem;border-top:1px solid var(--border,#444);display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap">
+      <button id="syncKeepLocal"  style="padding:.4rem .9rem;border-radius:6px;border:1px solid var(--border,#444);background:var(--bg2,#313244);color:inherit;cursor:pointer;font-size:.85rem">Keep All Local</button>
+      <button id="syncKeepCloud"  style="padding:.4rem .9rem;border-radius:6px;border:1px solid var(--border,#444);background:var(--bg2,#313244);color:inherit;cursor:pointer;font-size:.85rem">Keep All Cloud</button>
+      <button id="syncApplyMerge" style="padding:.4rem .9rem;border-radius:6px;border:none;background:#3b7dd8;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Apply ▶</button>
+    </div>
+  </div>
+</div>
+
 <script>
 firebase.initializeApp(firebaseConfig);
 const fbAuth = firebase.auth();
 const fbDb   = firebase.firestore();
 let fbUser = null;
-let fbUnsub = null; // onSnapshot unsubscriber
+let fbUnsub = null;
 
 function fbDocRef() {
   return fbDb.collection('users').doc(fbUser.uid).collection('planner').doc('data');
 }
 
-// Push local data to Firestore, stamping both Firestore and localStorage with the same timestamp
 function fbSave() {
   if (!fbUser) return;
   const savedAt = Date.now();
@@ -2543,12 +2556,6 @@ function fbSave() {
   fbDocRef().set({ events, priorities, colorLabels, colorBases, savedAt }).catch(console.error);
 }
 
-// Total event count across all slots — used as a tiebreaker when timestamps are absent
-function fbCountEvents(evObj) {
-  return Object.values(evObj || {}).reduce((n, arr) => n + arr.length, 0);
-}
-
-// Load Firestore data into app and re-render
 function fbApply(data) {
   if (!data) return;
   if (data.events)      events      = data.events;
@@ -2561,7 +2568,6 @@ function fbApply(data) {
   scheduleNotifications();
 }
 
-// Subscribe to real-time updates from Firestore
 function fbSubscribe() {
   if (fbUnsub) fbUnsub();
   fbUnsub = fbDocRef().onSnapshot(snap => {
@@ -2569,8 +2575,211 @@ function fbSubscribe() {
   }, console.error);
 }
 
-// Patch saveAll to also write to Firebase; stamp localStorage even when not signed in
-// so sign-in comparisons work correctly after offline edits
+// ── Merge helpers ─────────────────────────────────────────────────────────
+
+function flattenEvents(evObj) {
+  const m = new Map();
+  for (const slot of Object.values(evObj || {}))
+    for (const ev of slot) m.set(ev.id, ev);
+  return m;
+}
+
+function unflattenEvents(evMap) {
+  const out = {};
+  for (const ev of evMap.values()) {
+    const key = `${ev.date}|${ev.start}`;
+    (out[key] = out[key] || []).push(ev);
+  }
+  return out;
+}
+
+function flattenPriorities(prObj) {
+  const m = new Map();
+  for (const [wk, list] of Object.entries(prObj || {}))
+    for (const p of list) m.set(`${wk}::${p.id}`, { wk, p });
+  return m;
+}
+
+function unflattenPriorities(prMap) {
+  const out = {};
+  for (const { wk, p } of prMap.values())
+    (out[wk] = out[wk] || []).push(p);
+  return out;
+}
+
+function jsonEq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+function computeSyncDiff(localData, cloudData) {
+  const lEvs = flattenEvents(localData.events),   cEvs = flattenEvents(cloudData.events);
+  const lPrs = flattenPriorities(localData.priorities), cPrs = flattenPriorities(cloudData.priorities);
+
+  const evLocalOnly = [], evCloudOnly = [], evConflicts = [], evSame = new Map();
+  for (const id of new Set([...lEvs.keys(), ...cEvs.keys()])) {
+    const l = lEvs.get(id), c = cEvs.get(id);
+    if      (!c)           evLocalOnly.push(l);
+    else if (!l)           evCloudOnly.push(c);
+    else if (jsonEq(l, c)) evSame.set(id, l);
+    else                   evConflicts.push({ id, local: l, cloud: c });
+  }
+
+  const prLocalOnly = [], prCloudOnly = [], prConflicts = [], prSame = new Map();
+  for (const key of new Set([...lPrs.keys(), ...cPrs.keys()])) {
+    const l = lPrs.get(key), c = cPrs.get(key);
+    if      (!c)               prLocalOnly.push(l);
+    else if (!l)               prCloudOnly.push(c);
+    else if (jsonEq(l.p, c.p)) prSame.set(key, l);
+    else                       prConflicts.push({ key, local: l, cloud: c });
+  }
+
+  return { evLocalOnly, evCloudOnly, evConflicts, evSame, prLocalOnly, prCloudOnly, prConflicts, prSame };
+}
+
+function buildMerged(diff, choices, inclLocal, inclCloud, localData, cloudData) {
+  const evMap = new Map(diff.evSame);
+  if (inclLocal) diff.evLocalOnly.forEach(ev => evMap.set(ev.id, ev));
+  if (inclCloud) diff.evCloudOnly.forEach(ev => evMap.set(ev.id, ev));
+  for (const c of diff.evConflicts)
+    evMap.set(c.id, choices.get('ev:' + c.id) === 'cloud' ? c.cloud : c.local);
+
+  const prMap = new Map(diff.prSame);
+  if (inclLocal) diff.prLocalOnly.forEach(x => prMap.set(`${x.wk}::${x.p.id}`, x));
+  if (inclCloud) diff.prCloudOnly.forEach(x => prMap.set(`${x.wk}::${x.p.id}`, x));
+  for (const c of diff.prConflicts)
+    prMap.set(c.key, choices.get('pr:' + c.key) === 'cloud' ? c.cloud : c.local);
+
+  const localTs = parseInt(localStorage.getItem('plannerSavedAt') || '0', 10);
+  const useCloud = (cloudData.savedAt || 0) > localTs;
+  return {
+    events:      unflattenEvents(evMap),
+    priorities:  unflattenPriorities(prMap),
+    colorLabels: (useCloud && cloudData.colorLabels) ? cloudData.colorLabels : localData.colorLabels,
+    colorBases:  (useCloud && cloudData.colorBases)  ? cloudData.colorBases  : localData.colorBases,
+  };
+}
+
+// ── Sync modal UI ──────────────────────────────────────────────────────────
+
+function mkEl(tag, css, text) {
+  const el = document.createElement(tag);
+  if (css)  el.style.cssText = css;
+  if (text) el.textContent = text;
+  return el;
+}
+
+function buildGroupCard(title, preview, onToggle) {
+  const card = mkEl('div', 'border:1px solid var(--border,#444);border-radius:8px;padding:.7rem .9rem;display:flex;flex-direction:column;gap:.3rem');
+  const lbl  = mkEl('label', 'display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:600');
+  const cb   = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = true;
+  cb.addEventListener('change', () => onToggle(cb.checked));
+  lbl.appendChild(cb);
+  lbl.appendChild(document.createTextNode(title));
+  card.appendChild(lbl);
+  if (preview) card.appendChild(mkEl('div', 'color:var(--text-muted,#888);font-size:.8rem;padding-left:1.3rem', preview));
+  return card;
+}
+
+function evLabel(ev) { return `${ev.title || '(untitled)'} — ${ev.date} ${formatHour(ev.start)}–${formatHour(ev.end)}`; }
+
+function evDiff(a, b) {
+  const d = [];
+  if (a.title !== b.title) d.push(`title: "${a.title}"`);
+  if (a.start !== b.start || a.end !== b.end) d.push(`${formatHour(a.start)}–${formatHour(a.end)}`);
+  if ((a.notes || '') !== (b.notes || '')) d.push(`notes: "${(a.notes || '').slice(0, 40)}"`);
+  return d.join('; ') || '(minor diff)';
+}
+
+function prDiff(a, b) {
+  const d = [];
+  if (a.text !== b.text) d.push(`"${a.text}"`);
+  if (a.done !== b.done) d.push(a.done ? 'done' : 'not done');
+  if (a.target !== b.target) d.push(`target ${a.target}`);
+  if (a.progress !== b.progress) d.push(`progress ${a.progress}`);
+  return d.join('; ') || '(minor diff)';
+}
+
+function buildConflictCard(key, title, localDesc, cloudDesc, choices) {
+  const card = mkEl('div', 'border:1px solid var(--border,#444);border-radius:8px;padding:.7rem .9rem;display:flex;flex-direction:column;gap:.4rem');
+  card.appendChild(mkEl('div', 'font-weight:600;font-size:.85rem', title));
+  for (const [val, badge, bg, desc] of [['local','LOCAL','#3b7dd8',localDesc],['cloud','CLOUD','#0a7c52',cloudDesc]]) {
+    const lbl   = mkEl('label', 'display:flex;align-items:flex-start;gap:.4rem;cursor:pointer;font-size:.83rem;line-height:1.4');
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = key; radio.value = val; radio.style.marginTop = '2px';
+    if (val === 'local') radio.checked = true;
+    radio.addEventListener('change', () => choices.set(key, val));
+    const span = mkEl('span', '');
+    span.innerHTML = `<span style="background:${bg};color:#fff;padding:0 4px;border-radius:3px;font-size:.72rem;margin-right:.3rem">${badge}</span>${desc}`;
+    lbl.appendChild(radio); lbl.appendChild(span);
+    card.appendChild(lbl);
+  }
+  return card;
+}
+
+function showSyncModal(diff, localData, cloudData) {
+  return new Promise(resolve => {
+    const modal   = document.getElementById('syncModal');
+    const body    = document.getElementById('syncModalBody');
+    body.innerHTML = '';
+
+    const choices = new Map();
+    let inclLocal = true, inclCloud = true;
+
+    const totalSame = diff.evSame.size + diff.prSame.size;
+    if (totalSame)
+      body.appendChild(mkEl('div', 'color:var(--text-muted,#888);font-size:.82rem',
+        `${totalSame} item(s) identical — kept automatically.`));
+
+    const localOnlyCount = diff.evLocalOnly.length + diff.prLocalOnly.length;
+    if (localOnlyCount) {
+      const names = [...diff.evLocalOnly.map(e => e.title || 'event'),
+                     ...diff.prLocalOnly.map(x => x.p.text || 'priority')]
+                    .slice(0, 3).join(', ') + (localOnlyCount > 3 ? '…' : '');
+      body.appendChild(buildGroupCard(`Only in Local (${localOnlyCount})`, names, v => { inclLocal = v; }));
+    }
+
+    const cloudOnlyCount = diff.evCloudOnly.length + diff.prCloudOnly.length;
+    if (cloudOnlyCount) {
+      const names = [...diff.evCloudOnly.map(e => e.title || 'event'),
+                     ...diff.prCloudOnly.map(x => x.p.text || 'priority')]
+                    .slice(0, 3).join(', ') + (cloudOnlyCount > 3 ? '…' : '');
+      body.appendChild(buildGroupCard(`Only in Cloud (${cloudOnlyCount})`, names, v => { inclCloud = v; }));
+    }
+
+    const totalConflicts = diff.evConflicts.length + diff.prConflicts.length;
+    if (totalConflicts) {
+      body.appendChild(mkEl('div', 'font-weight:600;font-size:.85rem',
+        `Conflicts — same item, different data (${totalConflicts}):`));
+      for (const c of diff.evConflicts) {
+        const key = 'ev:' + c.id; choices.set(key, 'local');
+        body.appendChild(buildConflictCard(key, evLabel(c.local),
+          evDiff(c.local, c.cloud), evDiff(c.cloud, c.local), choices));
+      }
+      for (const c of diff.prConflicts) {
+        const key = 'pr:' + c.key; choices.set(key, 'local');
+        body.appendChild(buildConflictCard(key, `Priority: "${c.local.p.text || c.cloud.p.text}"`,
+          prDiff(c.local.p, c.cloud.p), prDiff(c.cloud.p, c.local.p), choices));
+      }
+    }
+
+    function finish(override) {
+      const il = override === 'local' ? true  : override === 'cloud' ? false : inclLocal;
+      const ic = override === 'local' ? false : override === 'cloud' ? true  : inclCloud;
+      if (override) {
+        for (const c of diff.evConflicts) choices.set('ev:' + c.id, override);
+        for (const c of diff.prConflicts) choices.set('pr:' + c.key, override);
+      }
+      modal.style.display = 'none';
+      resolve(buildMerged(diff, choices, il, ic, localData, cloudData));
+    }
+
+    document.getElementById('syncKeepLocal').onclick  = () => finish('local');
+    document.getElementById('syncKeepCloud').onclick  = () => finish('cloud');
+    document.getElementById('syncApplyMerge').onclick = () => finish();
+    modal.style.display = 'flex';
+  });
+}
+
+// Patch saveAll to also push to Firebase; stamp localStorage even when offline
 const _origSaveAll = saveAll;
 saveAll = function() {
   _origSaveAll();
@@ -2579,32 +2788,37 @@ saveAll = function() {
 };
 
 // Auth state
-fbAuth.onAuthStateChanged(user => {
+fbAuth.onAuthStateChanged(async user => {
   fbUser = user;
   const btn = document.getElementById('syncBtn');
   if (user) {
     btn.textContent = `☁️ ${user.displayName?.split(' ')[0] || 'Synced'}`;
     btn.title = `Signed in as ${user.email} — click to sign out`;
-    fbDocRef().get().then(snap => {
-      const localSavedAt = parseInt(localStorage.getItem('plannerSavedAt') || '0', 10);
-      const cloudData    = snap.exists ? snap.data() : null;
-      const cloudSavedAt = cloudData?.savedAt || 0;
-      const localEvents  = fbCountEvents(events);
-      const cloudEvents  = fbCountEvents(cloudData?.events);
-
-      // Push local when: no cloud doc; local timestamp is same-or-newer; neither has a
-      // timestamp but local has at least as many events (migration); or cloud is empty
-      // while local has data (catches the "signed in on wrong device first" bug).
-      const pushLocal =
-        !snap.exists ||
-        (localSavedAt > 0 && localSavedAt >= cloudSavedAt) ||
-        (localSavedAt === 0 && cloudSavedAt === 0 && localEvents >= cloudEvents) ||
-        (localEvents > 0 && cloudEvents === 0);
-
-      if (pushLocal) fbSave();
-      else           fbApply(cloudData);
-      fbSubscribe();
-    }).catch(console.error);
+    try {
+      const snap = await fbDocRef().get();
+      if (!snap.exists) {
+        fbSave(); // first sign-in: push local data up
+      } else {
+        const cloudData = snap.data();
+        const localData = { events, priorities, colorLabels, colorBases };
+        const diff      = computeSyncDiff(localData, cloudData);
+        const totalDiff = diff.evLocalOnly.length + diff.evCloudOnly.length + diff.evConflicts.length
+                        + diff.prLocalOnly.length + diff.prCloudOnly.length + diff.prConflicts.length;
+        if (totalDiff > 0) {
+          const merged = await showSyncModal(diff, localData, cloudData);
+          events      = merged.events;
+          priorities  = merged.priorities;
+          colorLabels = merged.colorLabels;
+          if (merged.colorBases) { colorBases = merged.colorBases; rebuildColors(); }
+          renderCalendar(); renderPriorities(); renderColorLegendBar(); scheduleNotifications();
+          _origSaveAll();
+          localStorage.setItem('plannerSavedAt', String(Date.now()));
+          fbSave();
+        }
+        // totalDiff === 0: data identical, nothing to do
+      }
+    } catch(e) { console.error(e); }
+    fbSubscribe();
   } else {
     btn.textContent = '☁️ Sign In';
     btn.title = 'Sign in to sync across devices';
