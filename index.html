@@ -2612,7 +2612,16 @@ function unflattenPriorities(prMap) {
   return out;
 }
 
-function jsonEq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function normalizeItem(obj) {
+  // Strip fields that are null, undefined, or empty string so Firestore round-trips compare cleanly
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === null || v === undefined || v === '') continue;
+    out[k] = v;
+  }
+  return out;
+}
+function jsonEq(a, b) { return JSON.stringify(normalizeItem(a)) === JSON.stringify(normalizeItem(b)); }
 
 function computeSyncDiff(localData, cloudData) {
   const lEvs = flattenEvents(localData.events),   cEvs = flattenEvents(cloudData.events);
