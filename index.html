@@ -2180,10 +2180,8 @@ function onDrop(e) {
   if (!dragData) return;
   const cellHour = parseFloat(this.dataset.hour);
   const newDate  = this.dataset.date;
-  // Snap the event start to the cell, adjusted for where user grabbed it
-  const rawStart = cellHour - (dragData.offsetHours || 0);
-  const newHour  = Math.round(rawStart * 2) / 2; // snap to nearest 0.5
-  const clampedStart = Math.max(0, Math.min(23.5, newHour));
+  // Snap event start directly to the dropped cell (ignoring grab offset)
+  const clampedStart = Math.max(0, Math.min(23.5, cellHour));
   if (newDate===dragData.origDate && clampedStart===dragData.origHour) return;
   const ev = findEvent(dragData.eventId); if (!ev) return;
   const dur = ev.end - ev.start;
