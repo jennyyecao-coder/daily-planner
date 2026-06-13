@@ -2841,21 +2841,11 @@ fbAuth.getRedirectResult().then(result => {
   }
 });
 
-document.getElementById('syncBtn').addEventListener('click', async () => {
+document.getElementById('syncBtn').addEventListener('click', () => {
   if (fbUser) {
     fbAuth.signOut();
   } else {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    try {
-      await fbAuth.signInWithPopup(provider);
-    } catch(e) {
-      console.error('Popup sign-in error:', e.code, e.message);
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
-        fbAuth.signInWithRedirect(provider);
-      } else {
-        alert('Sign-in failed: ' + e.message);
-      }
-    }
+    fbAuth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
   }
 });
 </script>
