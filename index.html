@@ -2826,12 +2826,15 @@ fbAuth.onAuthStateChanged(async user => {
   }
 });
 
+// Handle redirect result on page load
+fbAuth.getRedirectResult().catch(console.error);
+
 document.getElementById('syncBtn').addEventListener('click', () => {
   if (fbUser) {
     fbAuth.signOut();
   } else {
     const provider = new firebase.auth.GoogleAuthProvider();
-    fbAuth.signInWithPopup(provider).catch(console.error);
+    fbAuth.signInWithRedirect(provider);
   }
 });
 </script>
