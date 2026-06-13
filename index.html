@@ -2794,6 +2794,7 @@ saveAll = function() {
 
 // Auth state
 fbAuth.onAuthStateChanged(async user => {
+  console.log('[Firebase] onAuthStateChanged:', user ? user.email : 'null');
   fbUser = user;
   const btn = document.getElementById('syncBtn');
   if (user) {
@@ -2833,12 +2834,10 @@ fbAuth.onAuthStateChanged(async user => {
 
 // Handle redirect result on page load (in case popup was blocked and we fell back to redirect)
 fbAuth.getRedirectResult().then(result => {
-  if (result && result.user) console.log('Signed in via redirect:', result.user.email);
+  console.log('[Firebase] getRedirectResult:', result ? (result.user ? result.user.email : 'no user') : 'null');
 }).catch(e => {
-  if (e.code && e.code !== 'auth/no-auth-event') {
-    console.error('Redirect sign-in error:', e.code, e.message);
-    alert('Sign-in failed: ' + e.message);
-  }
+  console.error('[Firebase] getRedirectResult error:', e.code, e.message);
+  if (e.code && e.code !== 'auth/no-auth-event') alert('Sign-in failed: ' + e.message);
 });
 
 document.getElementById('syncBtn').addEventListener('click', () => {
