@@ -2521,15 +2521,10 @@ setInterval(updateTimeNowLine, 60000);
 </script>
 
 <!-- ══ Firebase sync ══════════════════════════════════════ -->
+<!-- Firebase credentials live in firebase-config.js (gitignored). -->
+<!-- Copy firebase-config.example.js → firebase-config.js and fill in your values. -->
+<script src="firebase-config.js"></script>
 <script>
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "daily-planner-eaeed.firebaseapp.com",
-  projectId: "daily-planner-eaeed",
-  storageBucket: "daily-planner-eaeed.firebasestorage.app",
-  messagingSenderId: "689699634937",
-  appId: "1:689699634937:web:cc96aa1079c8b20f596c28"
-};
 firebase.initializeApp(firebaseConfig);
 const fbAuth = firebase.auth();
 const fbDb   = firebase.firestore();
