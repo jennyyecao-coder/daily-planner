@@ -2234,7 +2234,8 @@ function buildPrioItemHTML(p, isDone) {
     left = `<input type="checkbox" class="prio-check"${isDone?' checked':''}>`;
   }
   const notesDot = p.notes ? `<span class="prio-notes-dot" title="Has notes"></span>` : '';
-  return `${left}<span class="prio-text" title="Click to add notes">${p.text}</span>${notesDot}<button class="prio-btn prio-edit-btn" title="Edit">✏️</button><button class="prio-btn prio-del-btn" title="Delete">✕</button>`;
+  const safeText = p.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return `${left}<span class="prio-text" title="Click to add notes">${safeText}</span>${notesDot}<button class="prio-btn prio-edit-btn" title="Edit">✏️</button><button class="prio-btn prio-del-btn" title="Delete">✕</button>`;
 }
 
 // ── Inline edit for a priority ────────────────────────────
