@@ -2844,7 +2844,10 @@ document.getElementById('syncBtn').addEventListener('click', () => {
   if (fbUser) {
     fbAuth.signOut();
   } else {
-    fbAuth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+    fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
+      console.error('[Firebase] signInWithPopup error:', e.code, e.message);
+      alert('Sign-in failed: ' + e.message);
+    });
   }
 });
 </script>
