@@ -2535,10 +2535,17 @@ function fbDocRef() {
   return fbDb.collection('users').doc(fbUser.uid).collection('planner').doc('data');
 }
 
-// Push local data to Firestore
+// Push local data to Firestore, stamping both Firestore and localStorage with the same timestamp
 function fbSave() {
   if (!fbUser) return;
-  fbDocRef().set({ events, priorities, colorLabels, colorBases }).catch(console.error);
+  const savedAt = Date.now();
+  localStorage.setItem('plannerSavedAt', String(savedAt));
+  fbDocRef().set({ events, priorities, colorLabels, colorBases, savedAt }).catch(console.error);
+}
+
+// Total event count across all slots — used as a tiebreaker when timestamps are absent
+function fbCountEvents(evObj) {
+  return Object.values(evObj || {}).reduce((n, arr) => n + arr.length, 0);
 }
 
 // Load Firestore data into app and re-render
@@ -2562,10 +2569,12 @@ function fbSubscribe() {
   }, console.error);
 }
 
-// Patch saveAll to also write to Firebase
+// Patch saveAll to also write to Firebase; stamp localStorage even when not signed in
+// so sign-in comparisons work correctly after offline edits
 const _origSaveAll = saveAll;
 saveAll = function() {
   _origSaveAll();
+  localStorage.setItem('plannerSavedAt', String(Date.now()));
   fbSave();
 };
 
@@ -2576,14 +2585,24 @@ fbAuth.onAuthStateChanged(user => {
   if (user) {
     btn.textContent = `☁️ ${user.displayName?.split(' ')[0] || 'Synced'}`;
     btn.title = `Signed in as ${user.email} — click to sign out`;
-    // Pull from Firestore first, then subscribe
     fbDocRef().get().then(snap => {
-      if (snap.exists) {
-        fbApply(snap.data());
-      } else {
-        // First sign-in: push local data up
-        fbSave();
-      }
+      const localSavedAt = parseInt(localStorage.getItem('plannerSavedAt') || '0', 10);
+      const cloudData    = snap.exists ? snap.data() : null;
+      const cloudSavedAt = cloudData?.savedAt || 0;
+      const localEvents  = fbCountEvents(events);
+      const cloudEvents  = fbCountEvents(cloudData?.events);
+
+      // Push local when: no cloud doc; local timestamp is same-or-newer; neither has a
+      // timestamp but local has at least as many events (migration); or cloud is empty
+      // while local has data (catches the "signed in on wrong device first" bug).
+      const pushLocal =
+        !snap.exists ||
+        (localSavedAt > 0 && localSavedAt >= cloudSavedAt) ||
+        (localSavedAt === 0 && cloudSavedAt === 0 && localEvents >= cloudEvents) ||
+        (localEvents > 0 && cloudEvents === 0);
+
+      if (pushLocal) fbSave();
+      else           fbApply(cloudData);
       fbSubscribe();
     }).catch(console.error);
   } else {
