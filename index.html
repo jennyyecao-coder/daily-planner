@@ -2255,7 +2255,8 @@ function onDragOver(e) {
     this.appendChild(lbl);
   }
 }
-function onDragLeave() {
+function onDragLeave(e) {
+  if (this.contains(e.relatedTarget)) return;
   this.classList.remove('drag-over');
   this.querySelector('.drag-time-lbl')?.remove();
 }
