@@ -618,7 +618,8 @@
 
   /* ══════════ MOBILE ══════════ */
   @media (max-width: 768px) {
-    body { overflow: auto; height: auto; min-height: 100vh; }
+    /* Bounded height so the calendar scrolls internally and day headers stay sticky */
+    body { overflow: hidden; height: 100vh; height: 100dvh; }
 
     header {
       flex-wrap: wrap; padding: 8px 12px; gap: 6px;
@@ -635,7 +636,7 @@
       padding: 6px 10px; cursor: pointer; font-size: 1rem; color: #fff;
     }
 
-    #main-content { flex-direction: column; overflow: visible; }
+    #main-content { flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
 
     #sidebar {
       display: none; width: 100%; max-width: 100%; min-width: unset;
@@ -648,7 +649,7 @@
     #prioPanel { height: auto; max-height: 260px; }
 
     #calendar-wrapper {
-      padding: 8px; overflow-x: auto; overflow-y: visible;
+      padding: 8px; overflow: auto;
       -webkit-overflow-scrolling: touch;
     }
     #calendar { border-radius: 8px; width: max-content; min-width: 100%; }
