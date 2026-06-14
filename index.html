@@ -660,15 +660,21 @@
     .day-cell { min-height: 44px; }
 
     /* ── Centered floating modal ── */
-    .modal-backdrop { align-items: center; justify-content: center; padding: 0; }
+    .modal-backdrop {
+      align-items: center; justify-content: center; padding: 0;
+      /* Use dynamic viewport units so iOS Safari sizes to the VISIBLE area
+         (vh/vw include space behind the toolbars and don't settle until a resize) */
+      height: 100vh; height: 100dvh;
+      width: 100vw; width: 100dvw;
+    }
     .modal-backdrop.open { display: flex; }
     .modal {
-      width: calc(100vw - 32px); max-width: 380px; border-radius: 14px;
-      padding: 12px 14px 16px; max-height: 86vh; overflow-y: auto;
+      width: calc(100vw - 32px); width: calc(100dvw - 32px); max-width: 380px; border-radius: 14px;
+      padding: 12px 14px 16px; max-height: 86vh; max-height: 86dvh; overflow-y: auto;
       box-shadow: 0 8px 32px rgba(44,62,80,.35);
     }
     .modal::before { display: none; }
-    .modal.narrow, .modal.wide { width: calc(100vw - 32px); max-width: 380px; }
+    .modal.narrow, .modal.wide { width: calc(100vw - 32px); width: calc(100dvw - 32px); max-width: 380px; }
     .modal h2 { font-size: .82rem; }
     .modal-header { margin-bottom: 6px; }
     .modal label { display: block; margin-top: 6px; margin-bottom: 2px; font-size: .67rem; }
