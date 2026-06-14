@@ -424,9 +424,11 @@
     position: absolute; left: 4px; right: 4px; top: 4px;
     border-radius: 6px; padding: 4px 8px;
     font-size: .75rem; font-weight: 600; cursor: grab;
-    user-select: none; overflow: hidden; z-index: 6;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    overflow: hidden; z-index: 6;
     box-shadow: 0 2px 6px rgba(0,0,0,.12); line-height: 1.4;
   }
+  .event * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .event:active { cursor: grabbing; }
   .event .ev-del {
     position: absolute; top: 3px; right: 5px; opacity: 0;
@@ -2224,7 +2226,7 @@ function onDrop(e) {
 // scrolling are never mistaken for a drag.
 let touchDrag = null;
 const LONG_PRESS_MS  = 3000; // hold this long to start moving an event
-const MOVE_TOLERANCE = 12;   // finger movement (px) during the hold that cancels arming (= a tap/scroll)
+const MOVE_TOLERANCE = 18;   // finger movement (px) during the hold that cancels arming (= a tap/scroll); forgiving of jitter
 function clearTouchDragVisual(el) {
   el.classList.remove('ev-moving');
   document.body.classList.remove('ev-dragging');
