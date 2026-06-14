@@ -1843,7 +1843,7 @@ function renderEvent(ev, ds, col, totalCols) {
   el.style.color       = c.text;
   el.style.borderLeft  = `3px solid ${c.border}`;
   el.style.height      = `${evH}px`;
-  el.draggable         = true;
+  el.draggable         = !isMobile(); // draggable swallows the first tap on touch; disable so a single tap opens edit
   el.dataset.eventId   = ev.id;
   el.dataset.date      = ds;
   el.dataset.hour      = ev.start;
