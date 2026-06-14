@@ -418,6 +418,12 @@
   .day-cell.weekend.col-hl      { background: var(--cell-whl); }
   .day-cell.weekend.row-hl.col-hl { background: var(--cell-wcross); }
   .day-cell.drag-over { background: var(--accent) !important; opacity: .6; }
+  .drag-time-lbl {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #e74c3c; font-size: .8rem; font-weight: 700;
+    pointer-events: none; z-index: 7; letter-spacing: .02em;
+  }
 
   /* ── Events ── */
   .event {
@@ -676,6 +682,7 @@
     .time-label { width: 60px; font-size: .65rem; }
 
     .day-cell { min-height: 44px; }
+    .ev-del { display: none !important; }
 
     /* ── Centered floating modal ── */
     .modal-backdrop {
@@ -894,6 +901,7 @@
     <div class="color-row" id="colorRow"></div>
     <div id="colorLegendHint" style="font-size:.74rem;color:#a0aec0;margin-top:4px;"></div>
     <div class="modal-actions">
+      <button class="btn-danger" id="modalDelete" style="display:none;margin-right:auto">Delete</button>
       <button class="btn-cancel" id="modalCancel">Cancel</button>
       <button class="btn-save"   id="modalSave">Save</button>
     </div>
@@ -1688,6 +1696,12 @@ function renderCalendar() {
   placeEvents(weekDays);
   updateTimeNowLine();
   renderWeekChart();
+  if (isMobile()) {
+    const dayW = (window.innerWidth - 60) / 3;
+    const mDs  = dateStrFromDate(currentMobileDay);
+    const di   = weekDays.findIndex(d => dateStrFromDate(d) === mDs);
+    document.getElementById('calendar-wrapper').scrollLeft = Math.max(0, di * dayW);
+  }
 }
 
 // ══ Hover crosshair ══════════════════════════════════════
@@ -1886,8 +1900,23 @@ function renderEvent(ev, ds, col, totalCols) {
   el.addEventListener('dragstart', e => { if (resizeState) { e.preventDefault(); return; } onDragStart(e); });
   el.addEventListener('dragend',   onDragEnd);
   // Forward drag events through to the parent cell so drops work on occupied slots
-  el.addEventListener('dragover',  e => { if (!dragData || dragData.eventId === ev.id) return; e.preventDefault(); e.dataTransfer.dropEffect='move'; cell.classList.add('drag-over'); });
-  el.addEventListener('dragleave', e => { if (!cell.contains(e.relatedTarget)) cell.classList.remove('drag-over'); });
+  el.addEventListener('dragover',  e => {
+    if (!dragData || dragData.eventId === ev.id) return;
+    e.preventDefault(); e.dataTransfer.dropEffect='move';
+    if (!cell.classList.contains('drag-over')) {
+      cell.classList.add('drag-over');
+      const lbl = document.createElement('div');
+      lbl.className = 'drag-time-lbl';
+      lbl.textContent = formatHour(parseFloat(cell.dataset.hour));
+      cell.appendChild(lbl);
+    }
+  });
+  el.addEventListener('dragleave', e => {
+    if (!cell.contains(e.relatedTarget)) {
+      cell.classList.remove('drag-over');
+      cell.querySelector('.drag-time-lbl')?.remove();
+    }
+  });
   el.addEventListener('drop',      e => { if (!dragData || dragData.eventId === ev.id) return; e.preventDefault(); e.stopPropagation(); onDrop.call(cell, e); });
   if (isMobile()) setupEventTouch(el, ev.id); // touch drag + single-tap edit (HTML5 DnD doesn't work on touch)
   cell.appendChild(el);
@@ -2076,6 +2105,7 @@ function setAlldayUI(isAllDay) {
 }
 function openAddModal(date, hour) {
   editingEventId = null;
+  document.getElementById('modalDelete').style.display = 'none';
   document.getElementById('modalTitle').textContent = 'Add Event';
   document.getElementById('evTitle').value     = '';
   document.getElementById('evDate').value      = date;
@@ -2096,6 +2126,7 @@ function openAddModal(date, hour) {
 function openEditModal(id) {
   const ev = findEvent(id); if (!ev) return;
   editingEventId = id;
+  document.getElementById('modalDelete').style.display = '';
   document.getElementById('modalTitle').textContent = 'Edit Event';
   document.getElementById('evTitle').value     = ev.title;
   document.getElementById('evDate').value      = ev.date;
@@ -2166,6 +2197,12 @@ function setupEventModalListeners() {
   document.getElementById('evEnd').addEventListener('change',   syncDurFromEnd);
   document.getElementById('evDurH').addEventListener('input',   syncEndFromDur);
   document.getElementById('evDurM').addEventListener('change',  syncEndFromDur);
+  document.getElementById('modalDelete').addEventListener('click', () => {
+    if (!editingEventId) return;
+    const id = editingEventId;
+    closeModal();
+    confirmDeleteEvent(id);
+  });
   document.getElementById('modalCancel').addEventListener('click', closeModal);
   document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
   document.getElementById('modalSave').addEventListener('click', saveModal);
@@ -2203,12 +2240,27 @@ function onDragEnd(e) {
   e.currentTarget.style.opacity='';
   document.body.classList.remove('ev-dragging');
   dragData=null;
-  document.querySelectorAll('.day-cell.drag-over').forEach(c=>c.classList.remove('drag-over'));
+  document.querySelectorAll('.day-cell.drag-over').forEach(c => {
+    c.classList.remove('drag-over');
+    c.querySelector('.drag-time-lbl')?.remove();
+  });
 }
-function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect='move'; this.classList.add('drag-over'); }
-function onDragLeave()  { this.classList.remove('drag-over'); }
+function onDragOver(e) {
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  if (!this.classList.contains('drag-over')) {
+    this.classList.add('drag-over');
+    const lbl = document.createElement('div');
+    lbl.className = 'drag-time-lbl';
+    lbl.textContent = formatHour(parseFloat(this.dataset.hour));
+    this.appendChild(lbl);
+  }
+}
+function onDragLeave() {
+  this.classList.remove('drag-over');
+  this.querySelector('.drag-time-lbl')?.remove();
+}
 function onDrop(e) {
-  e.preventDefault(); this.classList.remove('drag-over');
+  e.preventDefault(); this.classList.remove('drag-over'); this.querySelector('.drag-time-lbl')?.remove();
   if (!dragData) return;
   const cellHour = parseFloat(this.dataset.hour);
   const newDate  = this.dataset.date;
@@ -2549,9 +2601,15 @@ function setupPickerListeners() {
 
 // ══ Navigation ═══════════════════════════════════════════
 function scrollToCurrentHour() {
-  const now=new Date(), ds=dateStrFromDate(now);
-  const cell=document.querySelector(`.day-cell[data-date="${ds}"][data-hour="${now.getHours()}"]`);
-  if (cell) cell.scrollIntoView({behavior:'smooth',block:'center'});
+  const now = new Date(), ds = dateStrFromDate(now);
+  if (isMobile()) {
+    const dayW = (window.innerWidth - 60) / 3;
+    const mDs  = dateStrFromDate(currentMobileDay);
+    const di   = getWeekDays().findIndex(d => dateStrFromDate(d) === mDs);
+    document.getElementById('calendar-wrapper').scrollLeft = Math.max(0, di * dayW);
+  }
+  const cell = document.querySelector(`.day-cell[data-date="${ds}"][data-hour="${now.getHours()}"]`);
+  if (cell) cell.scrollIntoView({behavior:'smooth', block:'center'});
 }
 document.getElementById('prevBtn').addEventListener('click', () => {
   currentWeekStart=new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()-7);
