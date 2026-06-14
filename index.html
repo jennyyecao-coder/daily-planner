@@ -2225,7 +2225,7 @@ function onDrop(e) {
 // Drag is armed only after a long-press hold, so a normal tap (→ edit) and
 // scrolling are never mistaken for a drag.
 let touchDrag = null;
-const LONG_PRESS_MS  = 3000; // hold this long to start moving an event
+const LONG_PRESS_MS  = 1500; // hold this long to start moving an event
 const MOVE_TOLERANCE = 18;   // finger movement (px) during the hold that cancels arming (= a tap/scroll); forgiving of jitter
 function clearTouchDragVisual(el) {
   el.classList.remove('ev-moving');
