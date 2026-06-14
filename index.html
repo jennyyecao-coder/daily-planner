@@ -1880,6 +1880,7 @@ function renderEvent(ev, ds, col, totalCols) {
   el.addEventListener('dragover',  e => { if (!dragData || dragData.eventId === ev.id) return; e.preventDefault(); e.dataTransfer.dropEffect='move'; cell.classList.add('drag-over'); });
   el.addEventListener('dragleave', e => { if (!cell.contains(e.relatedTarget)) cell.classList.remove('drag-over'); });
   el.addEventListener('drop',      e => { if (!dragData || dragData.eventId === ev.id) return; e.preventDefault(); e.stopPropagation(); onDrop.call(cell, e); });
+  if (isMobile()) setupEventTouch(el, ev.id); // touch drag + single-tap edit (HTML5 DnD doesn't work on touch)
   cell.appendChild(el);
 }
 
@@ -2209,6 +2210,66 @@ function onDrop(e) {
   const dur = ev.end - ev.start;
   updateEvent(dragData.eventId, { date:newDate, start:clampedStart, end:Math.min(clampedStart+dur,48) });
   saveAll(); renderCalendar();
+}
+
+// Touch-based drag for mobile (HTML5 drag-and-drop is not supported on touch).
+// A short tap opens the edit modal; a drag past the threshold moves the event.
+let touchDrag = null;
+const TOUCH_DRAG_THRESHOLD = 10; // px before a tap becomes a drag
+function setupEventTouch(el, id) {
+  el.addEventListener('touchstart', e => {
+    if (e.target.closest('.ev-del') || e.target.closest('.ev-resize')) return; // let delete/resize handle their own taps
+    const t = e.touches[0];
+    touchDrag = { id, el, startX: t.clientX, startY: t.clientY, moved: false, targetCell: null };
+  }, { passive: true });
+
+  el.addEventListener('touchmove', e => {
+    if (!touchDrag || touchDrag.id !== id) return;
+    const t = e.touches[0];
+    const dist = Math.hypot(t.clientX - touchDrag.startX, t.clientY - touchDrag.startY);
+    if (!touchDrag.moved && dist > TOUCH_DRAG_THRESHOLD) {
+      touchDrag.moved = true;
+      el.style.opacity = '0.6';
+      document.body.classList.add('ev-dragging'); // disables pointer-events on events so elementFromPoint hits cells
+    }
+    if (touchDrag.moved) {
+      e.preventDefault(); // stop the page from scrolling while dragging
+      const under = document.elementFromPoint(t.clientX, t.clientY);
+      const cell  = under && under.closest('.day-cell');
+      document.querySelectorAll('.day-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+      if (cell) cell.classList.add('drag-over');
+      touchDrag.targetCell = cell || null;
+    }
+  }, { passive: false });
+
+  el.addEventListener('touchend', e => {
+    if (!touchDrag || touchDrag.id !== id) return;
+    const { moved, targetCell } = touchDrag;
+    el.style.opacity = '';
+    document.body.classList.remove('ev-dragging');
+    document.querySelectorAll('.day-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+    touchDrag = null;
+    e.preventDefault(); // suppress the synthetic click so it doesn't double-fire
+    if (!moved) { openEditModal(id); return; } // tap → edit
+    if (targetCell) {
+      const newDate = targetCell.dataset.date;
+      const clampedStart = Math.max(0, Math.min(23.5, parseFloat(targetCell.dataset.hour)));
+      const ev = findEvent(id);
+      if (ev && !(newDate === ev.date && clampedStart === ev.start)) {
+        const dur = ev.end - ev.start;
+        updateEvent(id, { date: newDate, start: clampedStart, end: Math.min(clampedStart + dur, 48) });
+        saveAll(); renderCalendar();
+      }
+    }
+  }, { passive: false });
+
+  el.addEventListener('touchcancel', () => {
+    if (!touchDrag) return;
+    el.style.opacity = '';
+    document.body.classList.remove('ev-dragging');
+    document.querySelectorAll('.day-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+    touchDrag = null;
+  }, { passive: true });
 }
 
 // ══ Priorities ════════════════════════════════════════════
