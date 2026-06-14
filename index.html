@@ -466,17 +466,25 @@
   .modal-backdrop.open { display: flex; }
 
   .modal {
-    background: var(--surface); border-radius: 14px; padding: 24px 28px;
-    width: 400px; box-shadow: 0 16px 48px rgba(44,62,80,.25);
-    max-height: 90vh; overflow-y: auto;
+    background: var(--surface); border-radius: 14px; padding: 18px 24px;
+    width: 420px; box-shadow: 0 16px 48px rgba(44,62,80,.25);
+    max-height: 92vh; overflow-y: auto;
   }
   .modal.narrow { width: 320px; }
   .modal.wide   { width: 480px; }
 
   .modal-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
   }
+
+  /* Compact side-by-side field layout (desktop) so the event modal fits without scrolling */
+  #evDateTimeRow { display: flex; gap: 12px; align-items: flex-start; }
+  #evDateCol { flex: 1; min-width: 0; }
+  #evTimeRows { flex: 1.4; min-width: 0; }
+  #evTimeCols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #evTimeCols > div { min-width: 0; }
+  .modal-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
   .modal h2 {
     font-size: 1rem; margin-bottom: 0; color: var(--ui-text);
     font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
@@ -490,7 +498,7 @@
   .modal-close-btn:hover { background: #fee2e2; color: #e05252; }
   .modal label {
     font-size: .78rem; font-weight: 700; color: var(--ui-text);
-    display: block; margin-bottom: 4px; margin-top: 12px;
+    display: block; margin-bottom: 3px; margin-top: 8px;
     text-transform: uppercase; letter-spacing: .05em;
   }
   .modal input[type="text"],
@@ -503,7 +511,7 @@
     background: var(--surface-inp); color: var(--body-text);
   }
   .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--btn-bg); background: var(--surface); }
-  .modal textarea { resize: vertical; min-height: 56px; }
+  .modal textarea { resize: vertical; min-height: 40px; }
   .modal .hint { font-size: .74rem; color: var(--muted); margin-top: 3px; }
 
   .color-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
@@ -514,7 +522,7 @@
   .color-swatch:hover    { transform: scale(1.15); }
   .color-swatch.selected { border-color: var(--ui-text); }
 
-  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   .btn-cancel {
     background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 7px 16px; cursor: pointer; font-size: .88rem; color: var(--muted);
