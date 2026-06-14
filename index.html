@@ -565,7 +565,7 @@
     font-weight: 700; color: var(--body-text);
   }
 
-  .dur-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .dur-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; max-width: 200px; }
   .dur-row input[type="number"] { width: 60px !important; }
   .dur-row select { flex: 1; }
   .dur-lbl { font-size: .82rem; color: var(--time-fg); }
@@ -705,7 +705,7 @@
     .allday-label { font-size: .78rem; }
     /* Hide less-used fields on mobile */
     .ev-desktop-only, .ev-location-wrap, .ev-notes-wrap, .ev-color-label, #colorLegendHint { display: none; }
-    .ev-dur-label, .ev-dur-row { display: none; }
+    .ev-dur-wrap { display: none; }
     .modal-actions { gap: 8px; margin-top: 10px; }
     .modal-actions .btn-cancel,
     .modal-actions .btn-save,
@@ -833,17 +833,19 @@
             <select id="evEnd"></select>
           </div>
         </div>
-        <label class="ev-dur-label">Duration</label>
-        <div class="dur-row ev-dur-row">
-          <input type="number" id="evDurH" min="0" max="47" placeholder="0" />
-          <span class="dur-lbl">h</span>
-          <select id="evDurM">
-            <option value="0">00 min</option>
-            <option value="30">30 min</option>
-          </select>
-        </div>
       </div><!-- #evTimeRows -->
     </div><!-- #evDateTimeRow -->
+    <div class="ev-dur-wrap">
+      <label class="ev-dur-label">Duration</label>
+      <div class="dur-row ev-dur-row">
+        <input type="number" id="evDurH" min="0" max="47" placeholder="0" />
+        <span class="dur-lbl">h</span>
+        <select id="evDurM">
+          <option value="0">00 min</option>
+          <option value="30">30 min</option>
+        </select>
+      </div>
+    </div>
     <div class="allday-row">
       <label class="allday-label"><input type="checkbox" id="evAllDay"> All day</label>
     </div>
